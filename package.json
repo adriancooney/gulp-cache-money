@@ -1,0 +1,32 @@
+{
+  "name": "gulp-cache-money",
+  "version": "1.0.0",
+  "description": "A gulp caching system that saves to disk.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "through2": "^0.6.5",
+    "vinyl-fs": "^1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adriancooney/gulp-cache-money.git"
+  },
+  "keywords": [
+    "gulp",
+    "cache",
+    "money"
+  ],
+  "author": "Adrian Cooney <adrian.cooney@teamwork.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adriancooney/gulp-cache-money/issues"
+  },
+  "homepage": "https://github.com/adriancooney/gulp-cache-money"
+}
