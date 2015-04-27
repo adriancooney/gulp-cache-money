@@ -5,10 +5,7 @@ var through = require("through2"),
 
 function cached(options) {
     // Merge the options with the defaults
-    cached.options = Object.keys(options || {}).reduce(function(defaults, key) {
-        defaults[key] = options[key];
-        return defaults;
-    }, cached.options);
+    cached.options = cached.defaults(options || {}, cached.options);
 
     // Load the cache file if any, synchronously.
     if(fs.existsSync(cached.options.cacheFile))
@@ -19,8 +16,19 @@ function cached(options) {
     process.on("SIGINT", cached.toFile.bind(null, cached.options.cacheFile));
 
     // Return the stream function
-    var callback = function() {
+    var callback = function(options) {
+        options = cached.defaults(options || {}, {
+            cascade: false
+        });
+
+        if(options.cascade) {
+            options.files = [];
+            options.changed = false;
+        }
+
         return through.obj(function(file, enc, callback) {
+            var self = this;
+
             if (file.isNull()) {
                 return callback(null, file);
             }
@@ -33,10 +41,32 @@ function cached(options) {
                 fileStream.end(file.contents);
             }
 
-            // Test if the file has changed
+            // Test if the file has changed (md5 regardless)
             cached.changed(file.path, fileStream, function(err, changed) {
-                // If the file has changed, push it on, otherwise don't bother
-                callback(err, changed ? file : null);
+
+                // If something has already changed and changes are
+                // cascading, just push on the file.
+                if(options.cascade && options.changed) return callback(err, file)
+                // If changes are cascading, we need to maintain a reference to all
+                // the files in case changes happen in the future
+                else if(options.cascade) {
+                    options.files.push(file);
+
+                    // Somethings changes, push all the files back into the stream
+                    if(changed) {
+                        options.changed = true;
+                        options.files.forEach(function(file) {
+                            // Push back the file
+                            self.push(file);
+                        });
+
+                        // And continue
+                        return callback(err);
+                    } else return callback(err)
+                } else {
+                    // If the file has changed, push it on, otherwise don't bother
+                    return callback(err, changed ? file : null);
+                }
             });
         });
     };
@@ -111,14 +141,26 @@ cached.md5 = function(stream, callback) {
     var hash = crypto.createHash("md5");
     hash.setEncoding("hex");
     
-    stream
-        .on("error", callback)
+    stream.on("error", callback)
         .on("end", function() {
             hash.end();
             callback(null, hash.read());
         });
 
     stream.pipe(hash)
+};
+
+/**
+ * Merge options into a defaults object. (Options overwrite defaults)
+ * @param  {Object} options  Options object.
+ * @param  {Object} defaults Defaults object.
+ * @return {Object}          Defaults + Options
+ */
+cached.defaults = function(options, defaults) {
+    return Object.keys(defaults).reduce(function(options, key) {
+        if(typeof options[key] === "undefined") options[key] = defaults[key];
+        return options;
+    }, options);
 };
 
 module.exports = cached;

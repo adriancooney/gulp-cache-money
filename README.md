@@ -23,11 +23,18 @@ gulp.task(function() {
 });
 ```
 
-## `cached( options )`
-This is the function exported from `gulp-cache-money`. Pass in an options object to configure the cache. The returned function is what you (call and) pass into your gulp build chain. `gulp-cache-money` works by md5'ing any incoming files and comparing the hashes, if the file hasn't changed it's remove from the `vinyl-fs` file stream and thus removed from any more processing.
+### `cache = cached( options )`
+This is the function exported from `gulp-cache-money`. Pass in an options object to configure the cache. The returned function is what you (call and) pass into your gulp build chain. `gulp-cache-money` works by md5'ing any incoming files and comparing the hashes, if none of the files within the `vinyl-fs` file stream have changed, the stream ends there otherwise all files are pushed down the chain.
 
-### Options
-* `cacheFile` -- The path to where you want to store you cache. Defaults to `.gulp-cache` in the directory of the entry file. (i.e. gulpfile.js)
+* `cacheFile` (String) -- The path to where you want to store you cache. Defaults to `.gulp-cache` in the directory of the entry file. (i.e. gulpfile.js)
+
+### `cache( options )`
+This is the function you pass into your gulp chain which is returned from the exported function. This allows for configuration on a per stream basis. This function accepts the following options.
+
+* `cascade` (Boolean) -- This tells the caching engine whether each file in the file stream is *individual*. This means that the output of the stream is based on each individual file and not made of multiple files (i.e. no relation between files). For example, if one task `concat`s multiple files into another single file, then one change to any of the files it `concat`s together requires a whole new build. You would put `cascade = true` in this example because some files are dependant on other files and any changes made to the dependants are **cascading**. Conversely, if you had a task that simply transformed SASS files into the CSS counterpart, you would set `cascade = false`.
+
+## Caveats
+Caching works by MD5'ing a file and comparing with the last known hash. It does not understand imports or `require` within files. I'd advise **against** using caching on any file that is an entry point to building other files. For example the entry file in `browserify`, if you make changes to some file the entry file `require`s and not the actual entry file, the task will not be run.
 
 
 ### License & Author
