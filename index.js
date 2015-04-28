@@ -39,12 +39,10 @@ function cached(options) {
             }
 
             // Ensure we have a stream
-            var fileStream; 
-            if(file.isStream()) fileStream = file.contents;
-            else if(file.isBuffer()) {
-                fileStream = through();
-                fileStream.end(file.contents);
-            }
+            var fileStream = through();
+
+            // Pipe in the contents
+            file.pipe(fileStream);
 
             // Test if the file has changed (md5 regardless)
             cached.changed(file.path, fileStream, function(err, changed) {
