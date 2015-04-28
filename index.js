@@ -34,9 +34,8 @@ function cached(options) {
         return through.obj(function(file, enc, callback) {
             var self = this;
 
-            if (file.isNull()) {
+            if (file.isNull()) 
                 return callback(null, file);
-            }
 
             // Ensure we have a stream
             var fileStream = through();
