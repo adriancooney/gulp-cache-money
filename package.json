@@ -10,9 +10,11 @@
     "through2": "^0.6.5",
     "vinyl-fs": "^1.0.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "mocha": "^2.2.4"
+  },
   "scripts": {
-    "test": "mocha"
+    "test": "./node_modules/.bin/mocha"
   },
   "repository": {
     "type": "git",
