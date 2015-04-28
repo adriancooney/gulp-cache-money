@@ -1,6 +1,8 @@
 # Gulp Cache Money
 Cache money is a gulp plugin that only runs the plugin if any of the files have changed. It saves the cache to a file called '.gulp-cache'.
 
+![Build status](https://travis-ci.org/adriancooney/gulp-cache-money.svg?branch=master)
+
 ## Installation
 Install via npm:
 

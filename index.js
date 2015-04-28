@@ -3,6 +3,11 @@ var through = require("through2"),
     path = require("path"),
     fs = require("fs");
 
+/**
+ * Return a clean cache plugin with configuration.
+ * @param  {Object} options :cacheFile -- The location of the cache file.
+ * @return {Function}         The function to pass into your gulp chain.
+ */
 function cached(options) {
     // Merge the options with the defaults
     cached.options = cached.defaults(options || {}, cached.options);
@@ -16,7 +21,7 @@ function cached(options) {
     process.on("SIGINT", cached.toFile.bind(null, cached.options.cacheFile));
 
     // Return the stream function
-    var callback = function(options) {
+    var plugin = function(options) {
         options = cached.defaults(options || {}, {
             cascade: false
         });
@@ -72,9 +77,9 @@ function cached(options) {
     };
 
     // Add a reference to cached for testing
-    callback.cached = cached;
+    plugin.cached = cached;
 
-    return callback;
+    return plugin;
 }
 
 /**
