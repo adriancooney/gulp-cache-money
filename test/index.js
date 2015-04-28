@@ -20,12 +20,6 @@ describe("Cached", function() {
             assert(typeof cached === "function");
             assert.equal(cached.options.cacheFile, CACHE_FILE);
         });
-
-        it("should have loaded an existing cache file", function() {
-            // The existing cache file is checked into git
-            // so it will always be there. Forever.
-            assert(cached.cache[EXAMPLE_FILE]);
-        });
     });
 
     describe(".defaults", function() {
