@@ -17,8 +17,17 @@ function cached(options) {
         cached.fromFile(cached.options.cacheFile);
 
     // Save the cache on exits and ctrl+c
-    process.on("exit", cached.toFile.bind(null, cached.options.cacheFile));
-    process.on("SIGINT", cached.toFile.bind(null, cached.options.cacheFile));
+    ["exit", "SIGINT"].forEach(function(event) {
+        process.on(event, function() {
+            if(cached.changes) {
+                try {
+                    cached.toFile(cached.options.cacheFile);
+                } catch(err) {
+                    console.warn("Unable to save cache file to %s.", cache.options.cacheFile);
+                }
+            }
+        });
+    });
 
     // Return the stream function
     var plugin = function(options) {
@@ -129,8 +138,10 @@ cached.changed = function(name, stream, callback) {
         cached.cache[name] = hash;
 
         // Compare
-        if(!currentHash || currentHash !== hash) callback(null, true);
-        else callback(null, false);
+        if(!currentHash || currentHash !== hash) {
+            cached.changes = true;
+            callback(null, true);
+        } else callback(null, false);
     });
 };
 
