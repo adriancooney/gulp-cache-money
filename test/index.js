@@ -156,4 +156,25 @@ describe("Cached", function() {
             chain.on("data", function() {});
         }
     });
+
+    describe("onexit", function() {
+        var tempCache = __dirname + "/cache-temp.json";
+
+        it("should save the cache file on changes", function() {
+            cached.changes = true;
+            cached.options.cacheFile = tempCache
+            cached.onexit();
+            assert(fs.existsSync(tempCache));
+        });
+
+        it("should not throw an error if the cache directory does not exist", function() {
+            cached.options.cacheFile = __dirname + "unknown-dir/FOO-BOO";
+            cached.onexit();
+        });
+
+        after(function(done) {
+            fs.unlink(tempCache, done);
+            cached.changes = false;
+        });
+    });
 });

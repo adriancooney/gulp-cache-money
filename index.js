@@ -18,15 +18,7 @@ function cached(options) {
 
     // Save the cache on exits and ctrl+c
     ["exit", "SIGINT"].forEach(function(event) {
-        process.on(event, function() {
-            if(cached.changes) {
-                try {
-                    cached.toFile(cached.options.cacheFile);
-                } catch(err) {
-                    console.warn("Unable to save cache file to %s.", cache.options.cacheFile);
-                }
-            }
-        });
+        process.on(event, cached.onexit);
     });
 
     // Return the stream function
@@ -174,6 +166,22 @@ cached.defaults = function(options, defaults) {
         if(typeof options[key] === "undefined") options[key] = defaults[key];
         return options;
     }, options);
+};
+
+/**
+ * Save the cache file on exit.
+ */
+cached.onexit = function() {
+    if(cached.changes) {
+        try {
+            cached.toFile(cached.options.cacheFile);
+        } catch(err) {
+            console.warn("Unable to save cache file to %s.", cached.options.cacheFile);
+            
+            if(err.code === "ENOENT")
+                console.warn("The directory %s does not exist.", path.dirname(cached.options.cacheFile));
+        }
+    }
 };
 
 module.exports = cached;
