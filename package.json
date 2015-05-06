@@ -11,6 +11,7 @@
     "vinyl-fs": "^1.0.0"
   },
   "devDependencies": {
+    "gulp": "^3.8.11",
     "mocha": "^2.2.4"
   },
   "scripts": {

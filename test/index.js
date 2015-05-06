@@ -2,7 +2,8 @@ var path = require("path"),
     fs = require("fs"),
     assert = require("assert"),
     vfs = require("vinyl-fs"),
-    through = require("through2");
+    through = require("through2"),
+    gulp = require("gulp");
 
 const TEST_DIR = __dirname;
 const EXAMPLE_FILE = path.join(TEST_DIR, "example.txt");
@@ -175,6 +176,51 @@ describe("Cached", function() {
         after(function(done) {
             fs.unlink(tempCache, done);
             cached.changes = false;
+        });
+    });
+
+    describe("stream continuation", function() {
+        before(function() {
+            for(var i = 0; i < 5; i++) fs.writeFileSync(path.join(__dirname, i + "-file.txt"), "Hello world!");
+        });
+
+        it("should still continue with the stream even if no files", function(done) {
+            var trial = 1, output = [];
+
+            gulp.task("example-task", function() {
+                console.log("Running task 'example-task'.")
+
+                var files = [];
+                return gulp.src(__dirname + "/*.txt")
+                    .pipe(cache())
+                    .pipe(through.obj(function(file, enc, callback) {
+                        files.push(file);
+                        callback(null, file);
+                    }, function(callback) {
+                        console.log("%d files in #%s passthrough.", files.length, trial);
+                        callback();
+                    }));
+            });
+
+            gulp.task("another-task", ["example-task"], function(next) {
+                trial++;
+
+                console.log("Running task 'another-task'.");
+                if(trial <= 3) {
+                    next();
+                    gulp.start(["another-task"]);
+                } else done();
+            })
+
+            gulp.start(["another-task"]);
+        });
+
+        after(function() {
+            fs.readdirSync(__dirname).filter(function(entry) {
+                return entry.match(/\d-file\.txt/);
+            }).forEach(function(file) {
+                fs.unlinkSync(path.join(__dirname, file));
+            });
         });
     });
 });
