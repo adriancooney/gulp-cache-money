@@ -32,10 +32,11 @@ function cached(options) {
             options.changed = false;
         }
 
+        var cacheHits = [];
         return through.obj(function(file, enc, callback) {
             var self = this;
 
-            if (file.isNull()) 
+            if(file.isNull() || file.isDirectory())
                 return callback(null, file);
 
             // Ensure we have a stream
@@ -65,12 +66,20 @@ function cached(options) {
 
                         // And continue
                         return callback(err);
-                    } else return callback(err)
-                } else {
-                    // If the file has changed, push it on, otherwise don't bother
-                    return callback(err, changed ? file : null);
+                    }
                 }
+
+                // If the file has changed, push it on, otherwise don't bother
+                else if(changed) return callback(err, file);
+
+                // Cache hit!
+                self.emit("cached", file.path);
+                cacheHits.push(file.path);
+                callback(err);
             });
+        }, function(callback) {
+            this.emit("cache-report", cacheHits);
+            callback();
         });
     };
 

@@ -19,7 +19,12 @@ var cache = require("gulp-cache-money")({
 
 gulp.task(function() {
     gulp.src("index.js")
-        .pipe(cache())
+        .pipe(
+            cache() // Pipe in the cacher
+            .on("cache-report", function(hits) { 
+                console.log("%d cache hits.", hits.length); // Log how many hits
+            })
+        )
         .pipe(browserify())
         .dest("/build.js");
 });
@@ -33,7 +38,16 @@ This is the function exported from `gulp-cache-money`. Pass in an options object
 ### `cache( options )`
 This is the function you pass into your gulp chain which is returned from the exported function. This allows for configuration on a per stream basis. This function accepts the following options.
 
-* `cascade` (Boolean) -- This tells the caching engine whether each file in the file stream is *individual*. This means that the output of the stream is based on each individual file and not made of multiple files (i.e. no relation between files). For example, if one task `concat`s multiple files into another single file, then one change to any of the files it `concat`s together requires a whole new build. You would put `cascade = true` in this example because some files are dependant on other files and any changes made to the dependants are **cascading**. Conversely, if you had a task that simply transformed SASS files into the CSS counterpart, you would set `cascade = false`.
+* `cascade` (Boolean) -- This tells the caching engine whether each file in the file stream is *individual*. This means that the output of the stream is based on each individual file and not made of multiple files (i.e. no relation between files). For example, if one task `concat`s multiple files into another single file, then one change to any of the files it `concat`s together requires a whole new build. You would put `cascade = true` in this example because some files are dependant on other files and any changes made to the dependants are **cascading**. Conversely, if you had a task that simply transformed minified images, you would set `cascade = false`.
+
+## Events
+The plugin emits two events to help you keep track of what's being cached.
+
+### `cached`
+This event is emitted when a file in the stream hits the cache. It passes the `path` of the file that hit the cache.
+
+### `cache-report` 
+This event is emitted when the all the files have passed through the cache. It passes you an array of `paths` that hit the cache and never continues on the stream.
 
 ## Caveats
 Caching works by MD5'ing a file and comparing with the last known hash. It does not understand imports or `require` within files. I'd advise **against** using caching on any file that is an entry point to building other files. For example the entry file in `browserify`, if you make changes to some file the entry file `require`s and not the actual entry file, the task will not be run.
