@@ -8,18 +8,36 @@ var path = require("path"),
 const TEST_DIR = __dirname;
 const EXAMPLE_FILE = path.join(TEST_DIR, "example.txt");
 const CACHE_FILE = path.join(TEST_DIR, "cache.json");
+const CACHE_FILE_2 = path.join(TEST_DIR, "cache2.json");
 
 describe("Cached", function() {
+    var Cached = require("../");
     var cache, cached;
 
     describe("Configuration", function() {
         it("should correctly require configure cached", function() {
-            cache = require("../")({ cacheFile: CACHE_FILE });
+            cache = Cached({ cacheFile: CACHE_FILE });
             cached = cache.cached; // Extract reference to cached
 
             assert(cached.options);
-            assert(typeof cached === "function");
+            assert(typeof cached === "object");
             assert.equal(cached.options.cacheFile, CACHE_FILE);
+        });
+
+        it("should correctly configure two separate cached methods", function() {
+            cache1 = Cached({ cacheFile: CACHE_FILE });
+            cached1 = cache1.cached; // Extract reference to cached
+
+            cache2 = Cached({ cacheFile: CACHE_FILE_2 });
+            cached2 = cache2.cached; // Extract reference to cached
+
+            assert(cached1.options);
+            assert(typeof cached1 === "object");
+            assert.equal(cached1.options.cacheFile, CACHE_FILE);
+
+            assert(cached2.options);
+            assert(typeof cached2 === "object");
+            assert.equal(cached2.options.cacheFile, CACHE_FILE_2);
         });
     });
 
@@ -28,24 +46,24 @@ describe("Cached", function() {
             var options = { foo: "bar" },
                 defaults = { foo: "wuggles", bar: "foo" };
 
-            options = cached.defaults(options, defaults);
+            options = Cached.defaults(options, defaults);
 
             assert.equal(options.bar, "foo");
             assert.equal(options.foo, "bar");
         });
     });
 
-    describe(".md5", function() {
+    describe(".sha", function() {
 
         before(function(done) {
             fs.writeFile(EXAMPLE_FILE, "Hello World!\n", done);
         });
 
-        it("should md5 a stream and return the hash", function(done) {
-            cached.md5(fs.createReadStream(EXAMPLE_FILE), function(err, hash) {
+        it("should SHA a stream and return the hash", function(done) {
+            Cached.sha(fs.createReadStream(EXAMPLE_FILE), function(err, hash) {
                 if(err) return done(err);
 
-                assert.equal(hash, "8ddd8be4b179a529afa5f2ffae4b9858");
+                assert.equal(hash, "03ba204e50d126e4674c005e04d82e84c21366780af1f43bd54a37816b6ab340");
                 done();
             });
         });
@@ -58,7 +76,8 @@ describe("Cached", function() {
     describe(".toFile/.fromFile", function() {
 
         before(function() {
-            cached.cache = {};
+            cache = Cached({ cacheFile: CACHE_FILE });
+            cached = cache.cached; // Extract reference to cached
         });
 
         it("should write the cache to a file.", function() {

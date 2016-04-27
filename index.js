@@ -8,22 +8,94 @@ var through = require("through2"),
  * @param  {Object} options :cacheFile -- The location of the cache file.
  * @return {Function}         The function to pass into your gulp chain.
  */
-function cached(options) {
-    // Merge the options with the defaults
-    cached.options = cached.defaults(options || {}, cached.options);
+function Cached(options) {
+    // local `cached` object to use in tests
+    var cached = {
+        // Merge the options with the defaults
+        options: Cached.defaults(options || {}, Cached.options),
+
+        // initialize cache object
+        cache: {},
+
+        // initialize `changes` attribute
+        changes: false,
+        
+        toFile: toFile,
+        fromFile: fromFile,
+        changed: changed,
+        onexit: onexit
+    };
+
+    /**
+     * Write the cache to a file. (Synchronous)
+     * @param  {String}   file     /path/to/cache
+     */
+    function toFile(file) {
+        fs.writeFileSync(file, JSON.stringify(cached.cache));
+    }
+
+    /**
+     * Import the cache from a file. (Synchronous)
+     * @param  {String}   file     /path/to/cache
+     */
+    function fromFile(file) {
+        cached.cache = JSON.parse(fs.readFileSync(file, "utf8"));
+    }
+
+    /**
+     * Test whether a file has changed within the cache since last
+     * time it was ran.
+     *
+     * @param  {String}   name     Name of the file. (unique)
+     * @param  {ReadableStream}   stream   The readable file stream.
+     * @param  {Function} callback Callback with (err, changed {boolean})
+     */
+    function changed(name, stream, callback) {
+        Cached.sha(stream, function(err, hash) {
+            if(err) return callback(err);
+
+            // Get the old hash
+            var currentHash = cached.cache[name];
+
+            // Update the hash
+            cached.cache[name] = hash;
+
+            // Compare
+            if(!currentHash || currentHash !== hash) {
+                cached.changes = true;
+                callback(null, true);
+            } else callback(null, false);
+        });
+    }
+
+    /**
+     * Save the cache file on exit.
+     */
+    function onexit() {
+        if(cached.changes) {
+            try {
+                toFile(cached.options.cacheFile);
+            } catch(err) {
+                console.warn("Unable to save cache file to %s.", cached.options.cacheFile);
+
+                if(err.code === "ENOENT")
+                    console.warn("The directory %s does not exist.", path.dirname(cached.options.cacheFile));
+            }
+        }
+    }
 
     // Load the cache file if any, synchronously.
     if(fs.existsSync(cached.options.cacheFile))
-        cached.fromFile(cached.options.cacheFile);
+        fromFile(cached.options.cacheFile);
 
     // Save the cache on exits and ctrl+c
     ["exit", "SIGINT"].forEach(function(event) {
-        process.on(event, cached.onexit);
+        process.on(event, onexit);
     });
 
     // Return the stream function
     var plugin = function(options) {
-        options = cached.defaults(options || {}, {
+        options = Cached.defaults(options || {}, {
             cascade: false
         });
 
@@ -45,8 +117,8 @@ function cached(options) {
             // Pipe in the contents
             file.pipe(fileStream);
 
-            // Test if the file has changed (md5 regardless)
-            cached.changed(file.path, fileStream, function(err, changed) {
+            // Test if the file has changed (sha regardless)
+            changed(file.path, fileStream, function(err, changed) {
 
                 // If something has already changed and changes are
                 // cascading, just push on the file.
@@ -91,70 +163,24 @@ function cached(options) {
 
 /**
  * Gulp cache configuration options.
+ * @static
  * @type {Object}
  */
-cached.options = {
+Cached.options = {
     // The path to the cache file. Defaults to ".gulp-cache" in the same directory as the entry file
     cacheFile: path.join(path.dirname(require.main.filename), ".gulp-cache")
 };
 
 /**
- * The cached object store.
- * @type {Object}
- */
-cached.cache = {};
-
-/**
- * Write the cache to a file. (Synchronous)
- * @param  {String}   file     /path/to/cache
- */
-cached.toFile = function(file) {
-    fs.writeFileSync(file, JSON.stringify(cached.cache));
-};
-
-/**
- * Import the cache from a file. (Synchronous)
- * @param  {String}   file     /path/to/cache
- */
-cached.fromFile = function(file) {
-    cached.cache = JSON.parse(fs.readFileSync(file, "utf8"));
-};
-
-/**
- * Test whether a file has changed within the cache since last
- * time it was ran.
- *     
- * @param  {String}   name     Name of the file. (unique)
+ * SHA an incoming file stream.
+ * @static
  * @param  {ReadableStream}   stream   The readable file stream.
- * @param  {Function} callback Callback with (err, changed {boolean})
+ * @param  {Function} callback Callback with (err, shaHash)
  */
-cached.changed = function(name, stream, callback) {
-    cached.md5(stream, function(err, hash) {
-        if(err) return callback(err);
-
-        // Get the old hash
-        var currentHash = cached.cache[name];
-
-        // Update the hash
-        cached.cache[name] = hash;
-
-        // Compare
-        if(!currentHash || currentHash !== hash) {
-            cached.changes = true;
-            callback(null, true);
-        } else callback(null, false);
-    });
-};
-
-/**
- * MD5 an incoming file stream.
- * @param  {ReadableStream}   stream   The readable file stream.
- * @param  {Function} callback Callback with (err, md5Hash)
- */
-cached.md5 = function(stream, callback) {
-    var hash = crypto.createHash("md5");
+Cached.sha = function(stream, callback) {
+    var hash = crypto.createHash("sha256");
     hash.setEncoding("hex");
-    
+
     stream.on("error", callback)
         .on("end", function() {
             hash.end();
@@ -166,31 +192,16 @@ cached.md5 = function(stream, callback) {
 
 /**
  * Merge options into a defaults object. (Options overwrite defaults)
+ * @static
  * @param  {Object} options  Options object.
  * @param  {Object} defaults Defaults object.
  * @return {Object}          Defaults + Options
  */
-cached.defaults = function(options, defaults) {
+Cached.defaults = function(options, defaults) {
     return Object.keys(defaults).reduce(function(options, key) {
         if(typeof options[key] === "undefined") options[key] = defaults[key];
         return options;
     }, options);
 };
 
-/**
- * Save the cache file on exit.
- */
-cached.onexit = function() {
-    if(cached.changes) {
-        try {
-            cached.toFile(cached.options.cacheFile);
-        } catch(err) {
-            console.warn("Unable to save cache file to %s.", cached.options.cacheFile);
-            
-            if(err.code === "ENOENT")
-                console.warn("The directory %s does not exist.", path.dirname(cached.options.cacheFile));
-        }
-    }
-};
-
-module.exports = cached;
+module.exports = Cached;
