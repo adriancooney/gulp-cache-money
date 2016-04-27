@@ -177,19 +177,19 @@ describe("Cached", function() {
         }
     });
 
-    describe("onexit", function() {
+    describe("onfinish", function() {
         var tempCache = __dirname + "/cache-temp.json";
 
         it("should save the cache file on changes", function() {
             cached.changes = true;
             cached.options.cacheFile = tempCache
-            cached.onexit();
+            cached.onfinish();
             assert(fs.existsSync(tempCache));
         });
 
         it("should not throw an error if the cache directory does not exist", function() {
             cached.options.cacheFile = __dirname + "unknown-dir/FOO-BOO";
-            cached.onexit();
+            cached.onfinish();
         });
 
         after(function(done) {

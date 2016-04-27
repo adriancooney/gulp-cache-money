@@ -23,7 +23,7 @@ function Cached(options) {
         toFile: toFile,
         fromFile: fromFile,
         changed: changed,
-        onexit: onexit
+        onfinish: onfinish
     };
 
     /**
@@ -71,7 +71,7 @@ function Cached(options) {
     /**
      * Save the cache file on exit.
      */
-    function onexit() {
+    function onfinish() {
         if(cached.changes) {
             try {
                 toFile(cached.options.cacheFile);
@@ -87,11 +87,6 @@ function Cached(options) {
     // Load the cache file if any, synchronously.
     if(fs.existsSync(cached.options.cacheFile))
         fromFile(cached.options.cacheFile);
-
-    // Save the cache on exits and ctrl+c
-    ["exit", "SIGINT"].forEach(function(event) {
-        process.on(event, onexit);
-    });
 
     // Return the stream function
     var plugin = function(options) {
@@ -151,6 +146,7 @@ function Cached(options) {
             });
         }, function(callback) {
             this.emit("cache-report", cacheHits);
+            onfinish();
             callback();
         });
     };
